@@ -1,12 +1,12 @@
 \chapter{System Design and Implementation}
 \label{chap:system-design}
 
-This chapter describes the design and implementation of Zaguik. It begins with the overall architecture of the pipeline (Section~\ref{sec:sd-architecture}) and the two-layer approach to PII filtering (Section~\ref{sec:sd-filtering}). It then presents the central design decision of this work, the move from a neural detector to a byte-level circuit policy (Section~\ref{sec:sd-circuit}), followed by the encoding of outputs for the circuit (Section~\ref{sec:sd-encoding}). Section~\ref{sec:sd-formal} gives the formal model and security guarantees, building on the zero-knowledge background of Chapter~\ref{chap:background}. Sections~\ref{sec:sd-pipeline} and~\ref{sec:sd-implementation} describe the proof-generation pipeline and the implementation details, respectively.
+This chapter describes the design and implementation of Zaguik. It begins with the overall architecture of the pipeline (Section~\ref{sec:sd-architecture}) and the two-layer approach to PII filtering (Section~\ref{sec:sd-filtering}). It then presents the central design decision of this work, the move from a neural detector to a byte-level circuit policy (Section~\ref{sec:sd-circuit}), followed by the encoding of outputs for the circuit (Section~\ref{sec:sd-encoding}). Section~\ref{sec:sd-formal} gives the formal model and security guarantees, building on the zero-knowledge background of Chapter~\ref{chap:background}. Sections~\ref{sec:sd-pipeline} and~\ref{sec:sd-implementation} describe the proof-generation pipeline and the implementation details, respectively. Section~\ref{sec:sd-example} closes the chapter with a concrete worked example tracing two short strings end to end.
 
 \section{System Architecture}
 \label{sec:sd-architecture}
 
-The core contribution of this work is a \emph{cryptographic attestation pipeline}: a way to produce a zk-SNARK proof that an encoded output prefix satisfies a certified policy, accompanied, at the protocol level, by a hash commitment to that prefix, and with no disclosure of the text or the checker's internals. As made precise in Section~\ref{sec:sd-formal}, the proof concerns the encoded prefix only, and the commitment is a separate, protocol-level object whose correspondence to the prefix is not verified inside the circuit. The PII filter is the policy being attested; its design is deliberately simple so that the focus remains on the proof system.
+The core contribution of this work is a \emph{cryptographic attestation pipeline}: a way to produce a zk-SNARK proof that an encoded output prefix satisfies a certified policy, accompanied, at the protocol level, by a hash commitment to that prefix, and with no disclosure of the text or the checker's internals. As made precise in Section~\ref{sec:sd-formal}, the proof concerns the encoded prefix only, and the commitment is a separate, protocol-level object whose correspondence to the prefix is not verified inside the circuit. The PII filter is the policy being attested; its design is deliberately simple so that the focus remains on the proof system. We use the word \emph{certified} in a specific and limited sense throughout this thesis: the circuit, and therefore its verification key, is fixed and published in advance, so that every party agrees on precisely which policy is being attested and checks all proofs against the same key. The term implies no endorsement by an external certification authority; it refers only to this prior, public fixing of the policy, and any change to the policy yields a different circuit and a different verification key.
 
 \medskip
 
@@ -118,7 +118,7 @@ which binds the attestation to the prefix $y_L$ at the protocol level. Note that
 
 \medskip
 
-\textbf{Security model.} We assume a standard adversarial model in which the prover may be malicious and the verifier is honest and follows the verification algorithm. Under the soundness of zk-SNARKs (Definition~\ref{def:completeness-soundness}), no probabilistic polynomial-time adversary can produce a valid proof for $C(x) = 0$ without knowledge of a witness $x$ satisfying that relation. Zero-knowledge (Definition~\ref{def:czk}) ensures that the proof reveals no information about $x$ beyond the truth of the statement. However, because the hash commitment is enforced only at the protocol level and not inside the circuit, the binding between $h$ and $x$ holds only under an \emph{honest-prover assumption}: a malicious prover could in principle generate a valid proof for some $x$ while publishing an unrelated $h$. Strengthening this binding would require verifying the hash inside the circuit, ideally with a SNARK-friendly hash function, at the cost of additional circuit complexity.
+\textbf{Security model.} We assume the verifier is honest and follows the verification algorithm, and we are careful to distinguish two parts of the guarantee with respect to a potentially malicious prover, since they do not enjoy the same protection. The zk-SNARK component is sound against a malicious prover: by the soundness of zk-SNARKs (Definition~\ref{def:completeness-soundness}), no probabilistic polynomial-time adversary can produce a valid proof for $C(x) = 0$ without knowledge of a witness $x$ satisfying that relation, and zero-knowledge (Definition~\ref{def:czk}) ensures the proof reveals nothing about $x$ beyond the truth of the statement. The binding between that witness and a specific model output is a separate matter. Because the commitment $h = H(y_L)$ is computed and published \emph{outside} the circuit, its correspondence to the witness $x$ is not enforced cryptographically; it holds only under an \emph{honest-prover assumption}. A malicious prover could therefore prove $C(x) = 0$ for some innocuous $x$ while publishing a hash derived from an unrelated output. This is the principal limitation of the present design, and it is worth stating plainly: the circuit statement is verifiable without trust, but the link from the proof to the actual delivered output is not, which falls short of the fully untrusted-prover setting that motivates this work (Chapter~\ref{chap:introduction}). Closing this gap by verifying the hash \emph{inside} the circuit, ideally with a SNARK-friendly hash function, is the most important direction we leave to future work (Chapter~\ref{chap:conclusions}).
 
 \medskip
 
@@ -139,16 +139,71 @@ The cryptographic pipeline follows the three stages of a zk-SNARK introduced in 
 
 \medskip
 
-\textbf{Verify.} Verification is deterministic: given the proof, the verification key, the settings, and the SRS, the verifier runs the verification algorithm and accepts if and only if the proof is valid. No secret data is required. The verifier does not learn the output and cannot confirm its exact contents; at most, if it holds the published SHA-256 hash, it can associate the proof with the attested prefix under the honest-prover assumption discussed above, a correspondence that is not enforced inside the circuit.
+\textbf{Verify.} Verification is deterministic: given the proof, the verification key, the settings, and the SRS, the verifier runs the verification algorithm and accepts if and only if the proof is valid. No secret data is required. The verifier does not learn the output and cannot confirm its exact contents; as discussed in Section~\ref{sec:sd-formal}, a verifier holding the published hash can associate the proof with the attested prefix only under the honest-prover assumption, since this correspondence is not enforced inside the circuit.
 
 \medskip
 
 The \emph{visibility semantics} of the protocol follow the split summarised earlier in Table~\ref{tab:visibility}: the encoded input is kept private as witness data, the circuit output is exposed so that the verifier can confirm a \texttt{PASS}, and the filter parameters are fixed in the circuit rather than revealed, so the verifier learns only that the same certified circuit was executed. Together these choices ensure that the proof establishes execution of the certified circuit on a private encoded prefix returning \texttt{PASS}, while only a hash commitment to that prefix is exposed.
 
+\section{Worked Example}
+\label{sec:sd-example}
+
+To make the pipeline concrete, we trace two short strings end to end: one that satisfies the byte-level policy and one that does not. The strings are kept short so that every byte can be inspected by hand; the mechanism is identical for longer LLM outputs, only the padding length differs.
+
+\medskip
+
+\textbf{Example A: a clean response (PASS).}
+Suppose the LLM answers a general-knowledge query with the response:
+
+\begin{quote}
+\texttt{The capital of France is Paris}
+\end{quote}
+
+This string contains 30 UTF-8 bytes.  Examining each byte value, none of them is suspicious: there are no \texttt{@} characters, no digits, no hyphens, and no periods.  The encoding $x = \mathrm{Enc}_L(y_L)$ is formed by appending $L - 30$ zero bytes and dividing each entry by~255, giving a float vector of shape $[1, L]$.  The byte-level circuit evaluates the sum over all positions and returns $o = 0$, which signals \texttt{PASS}.
+
+The prover computes the commitment $h = \text{SHA-256}(y_L)$ over the zero-padded raw bytes and publishes it together with the proof~$\pi$.  The verifier runs the verification algorithm with $(\pi, \mathrm{vk}, o = 0, h)$ and accepts: a clean LLM response to a general-knowledge question has been cryptographically attested, with neither the response text nor the filter logic ever leaving the prover.
+
+\medskip
+
+\textbf{Example B: a response containing PII (FAIL).}
+Now suppose the LLM produces a response that inadvertently reveals a contact detail:
+
+\begin{quote}
+\texttt{For further assistance please contact support@helpdesk.org}
+\end{quote}
+
+This string contains 57 UTF-8 bytes.  Two suspicious bytes appear: the \texttt{@} character (byte value~64) between \texttt{support} and \texttt{helpdesk}, and the period (byte~46) separating \texttt{helpdesk} from \texttt{org}.  After the same encoding procedure the circuit counts both values and returns $o = 2$, signalling \texttt{FAIL}.  In a real deployment this output would already have been blocked by the operational regex detector in the filtering phase, since the email address matches a standard pattern; the circuit then corroborates that finding from first principles at the byte level.
+
+The proof~$\pi$ is still generated and is still valid: it attests that the circuit was correctly executed on the encoded string and returned the count $o = 2$.  The verifier accepts the proof as a correct execution of the certified circuit, but observes $o > 0$ and concludes that the policy was not satisfied.  Importantly, the verifier learns only that the count was~2; the exact string, the position of the suspicious bytes, and any other content of the response remain private.
+
+\medskip
+
+Table~\ref{tab:worked-example} summarises the two cases side by side, showing what the verifier sees and what remains private.
+
+\begin{table}[htbp]
+\centering
+\caption{Public and private information for the two worked examples.}
+\label{tab:worked-example}
+\footnotesize
+\begin{tabular}{l l l}
+\hline
+\hline
+ & Example A (PASS) & Example B (FAIL) \\
+\hline
+Response text $y$ & \emph{private} & \emph{private} \\
+Suspicious-byte count $o$ & $0$ (public) & $2$ (public) \\
+Hash commitment $h$ & SHA-256$(y_L)$ (public) & SHA-256$(y_L)$ (public) \\
+Proof $\pi$ & valid & valid \\
+Verifier verdict & policy satisfied & policy not satisfied \\
+\hline
+\hline
+\end{tabular}
+\end{table}
+
 \section{Implementation Details}
 \label{sec:sd-implementation}
 
-The reference implementation is written in Python and structured as a single scriptable workflow covering ONNX export, encoding, setup, proof generation, and verification. The default configuration builds the small byte-level ONNX model, runs setup, and then generates and verifies proofs for a given text string.
+The reference implementation is written in Python and structured as a single scriptable workflow covering ONNX export, encoding, setup, proof generation, and verification.\footnote{The full source code is publicly available at \url{https://github.com/JanAguilo/zaguik}.} The default configuration builds the small byte-level ONNX model, runs setup, and then generates and verifies proofs for a given text string.
 
 \medskip
 

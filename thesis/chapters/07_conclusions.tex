@@ -26,7 +26,7 @@ Several directions follow naturally from this work.
 
 \medskip
 
-\textbf{Stronger commitment binding.} The binding between the public hash and the circuit input could be moved inside the circuit, for instance by verifying a SNARK-friendly hash of the encoded input as part of the statement. This would remove the honest-prover assumption on the commitment, at the cost of additional circuit complexity.
+\textbf{Stronger commitment binding.} The most important limitation to address is the honest-prover assumption on the commitment identified in Chapter~\ref{chap:system-design}. The binding between the public hash and the circuit input could be moved inside the circuit, for instance by verifying a SNARK-friendly hash of the encoded input as part of the proven statement. This would remove the honest-prover assumption and bring the system closer to the fully untrusted-prover setting that motivates it, at the cost of additional circuit complexity and proof cost.
 
 \medskip
 

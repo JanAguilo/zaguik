@@ -14,7 +14,11 @@ The structured reference string (SRS) was generated locally using EzKL's facilit
 
 \medskip
 
-Experiments were run sequentially, with no parallel execution across configurations. We evaluated five encoding lengths, $L \in \{128, 256, 512, 1024, 2048\}$ bytes, each repeated fifteen times ($n = 15$) using independently generated reference outputs from the same prompt and model. Each prompt was designed to produce an output exceeding 2048 bytes, so that for every value of $L$ the encoding window was fully populated; when $L < 2048$, only the prefix of length $L$ bytes was encoded and attested. This yields $5 \times 15 = 75$ proof-generation and verification attempts in total. The mean values and sample statistics over the fifteen runs are reported below.
+Experiments were run sequentially, with no parallel execution across configurations. A single reference output was generated once from a fixed prompt with DistilGPT-2 and reused throughout; it was designed to exceed 2048 bytes so that, for every value of $L$, the encoding window was fully populated (when $L < 2048$, only the first $L$ bytes were encoded and attested). We evaluated five encoding lengths, $L \in \{128, 256, 512, 1024, 2048\}$ bytes, and for each $L$ we repeated proof generation and verification fifteen times ($n = 15$) on this same input, so that the repetitions isolate run-to-run timing variability rather than variation in the data. This yields $5 \times 15 = 75$ proof-generation and verification attempts in total, and the mean values and sample statistics over the fifteen repetitions are reported below.
+
+\medskip
+
+Two clarifications are needed to read these results correctly. First, the pipeline is \emph{gated}: as described in Chapter~\ref{chap:system-design}, the operational regex detector runs in the clear first, and only outputs it judges free of structured PII (emails, phone numbers, identification numbers, and similar) ever reach the proof phase. The attested inputs are therefore ``clean'' in the sense of that detector. Second, and crucially, the circuit policy is stricter and different in kind: it counts the suspicious bytes \texttt{@}, \texttt{-}, \texttt{.}, and the digits \texttt{0}--\texttt{9}, and signals \texttt{PASS} only when this count is zero. Because the period and digits occur in virtually all natural-language text, a multi-hundred-byte LLM output yields a positive count even after passing the regex gate, so the attested result in these runs is a nonzero suspicious-byte count rather than a \texttt{PASS}. This distinction does not affect the quantities measured in this chapter (proof size, proving time, witness time, and verification time are determined by the circuit and the encoding length $L$, not by the value of the count), but it means the experiments should be read as a characterisation of \emph{attestation cost}, not as a measurement of how often outputs satisfy the policy. Accordingly, when we report that all 75 attempts ``succeeded'', we mean precisely that every proof was generated and then verified without error, not that any output produced a \texttt{PASS}.
 
 \section{One-Time Setup Costs}
 \label{sec:eval-setup-costs}
@@ -48,7 +52,7 @@ Total & 102.44 \\
 \section{Proof Size and Timing Results}
 \label{sec:eval-results}
 
-Table~\ref{tab:results} presents the proof size, proof generation time, witness computation time, and verification time for each value of $L$, reported as mean $\pm$ sample standard deviation over the fifteen runs. All 75 proof-generation and verification attempts succeeded across the five encoding lengths.
+Table~\ref{tab:results} presents the proof size, proof generation time, witness computation time, and verification time for each value of $L$, reported as mean $\pm$ sample standard deviation over the fifteen repetitions. All 75 proof-generation and verification attempts completed without error across the five encoding lengths, in the sense clarified in Section~\ref{sec:eval-setup}: every proof was generated and then verified successfully.
 
 \medskip
 

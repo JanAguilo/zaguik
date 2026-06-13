@@ -26,16 +26,16 @@ Verification time remains broadly stable across all configurations (169--201\,ms
 
 \medskip
 
-Finally, the experiments validate the prefix-attestation mechanism itself. For $L < 2048$, only the first $L$ bytes are encoded and attested, and all 75 attempts across the five values of $L$ succeeded. This confirms that the attested length can be tuned to circuit-cost constraints while preserving verifiability, at the cost of limiting the guarantee to the attested prefix rather than the entire output.
+Finally, the experiments validate the prefix-attestation mechanism itself. For $L < 2048$, only the first $L$ bytes are encoded and attested, and every one of the 75 attempts produced a proof that verified (in the sense clarified in Chapter~\ref{chap:evaluation}, namely that the proofs were generated and checked without error, independently of the attested count). This confirms that the attested length can be tuned to circuit-cost constraints while preserving verifiability, at the cost of limiting the guarantee to the attested prefix rather than the entire output.
 
 \section{Governance and Security Implications}
 \label{sec:disc-governance}
 
-The pipeline illustrates a shift from trust-based enforcement to cryptographically verifiable enforcement. In conventional deployments, an external party must rely on the provider's assertion that a privacy filter is applied to LLM outputs; the alternative, inspecting the outputs or the filtering logic directly, reintroduces the very privacy and intellectual-property concerns the filter was meant to address. Zaguik enables a third party to verify instead that a specific, predefined circuit-based policy was executed on a private encoded prefix and returned \texttt{PASS}, without revealing the output itself.
+The pipeline illustrates how trust-based enforcement might be partially replaced by cryptographic verification, while also making clear how far the present prototype actually goes. In conventional deployments, an external party must rely on the provider's assertion that a privacy filter is applied to LLM outputs; the alternative, inspecting the outputs or the filtering logic directly, reintroduces the very privacy and intellectual-property concerns the filter was meant to address. Zaguik lets a third party verify instead that a specific, predefined circuit-based policy was executed on a private encoded prefix, and to read the result of that check, without revealing the output itself.
 
 \medskip
 
-It is important to state precisely what this does and does not establish. The proof attests correct execution of the certified circuit on an encoded prefix and the satisfaction of the encoded constraint. It does not allow the verifier to recover or confirm the exact output: as set out in Chapter~\ref{chap:system-design}, the verifier sees only the public elements of Table~\ref{tab:visibility}, and the hash commitment links the proof to the attested prefix at the protocol level only, under an honest-prover assumption, rather than being verified inside the circuit. The mechanism therefore supports a form of privacy-preserving auditability: verification can occur without access to the generated text.
+It is important to state precisely what this does and does not establish. The proof attests correct execution of the certified circuit on an encoded prefix and the satisfaction of the encoded constraint. It does not allow the verifier to recover or confirm the exact output: as set out in Chapter~\ref{chap:system-design}, the verifier sees only the public elements of Table~\ref{tab:visibility}, and the hash commitment links the proof to the attested prefix at the protocol level only, under an honest-prover assumption, rather than being verified inside the circuit. The mechanism therefore supports a form of privacy-preserving auditability: verification can occur without access to the generated text. We stress, however, that because the commitment tying a proof to a specific output is only protocol-level in this prototype, the provider is not yet fully removed from the trust boundary; achieving that would require binding the hash inside the circuit, which we identify as the central item of future work (Chapter~\ref{chap:conclusions}).
 
 \medskip
 
@@ -65,6 +65,10 @@ Several limitations must be acknowledged, most of which follow directly from the
 \medskip
 
 \textbf{Policy semantics, not adequacy.} The system guarantees enforcement integrity of the encoded policy, not the semantic adequacy of that policy. A weak or incomplete detector can be correctly executed and faithfully proven; the attestation certifies that a rule was applied, not that the rule captures all relevant forms of personal data.
+
+\medskip
+
+\textbf{Information leakage from the public count.} The circuit exposes the suspicious-byte count $o$ rather than a single \texttt{PASS}/\texttt{FAIL} bit. When $o = 0$ this reveals only that the policy was satisfied, but when $o > 0$ the exact value leaks coarse information about the attested text, namely how many suspicious bytes it contains. A deployment concerned with this side channel could reduce the public output to a single bit, proving $o = 0$ versus $o > 0$ inside the circuit, at a small additional cost.
 
 \medskip
 

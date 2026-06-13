@@ -95,7 +95,7 @@
 \title{Zaguik: Zero-Knowledge Attestation for Privacy-Preserving LLM Governance}
 \author{Jan Aguil\'o Plana}
 \thyear{Curs 2025 - 2026}
-\supervisor{Vanesa Daza}
+\supervisor{Supervisor: Vanesa Daza}
 \grau{Mathematical Engineering in Data Science}
 
 
@@ -151,27 +151,31 @@ Finalment, vull agrair a la persona que ha fet que el projecte fos possible, que
 %%%%%% ABSTRACTS in three languages (Catalan, English, Spanish), as required by the UPF template.
 \selectlanguage{catalan}
 \section*{\Large \sffamily Resum}
-Els reguladors exigeixen cada cop més garanties basades en evidències sobre com els sistemes d'intel·ligència artificial tracten la informació sensible. Presentem Zaguik, un sistema d'atestació que preserva la privadesa i demostra, en coneixement zero, que la resposta d'un gran model de llenguatge (LLM) ha superat un filtre d'informació d'identificació personal (PII), sense revelar el text ni el model de filtratge. El sistema genera la resposta, aplica una política de detecció de PII i produeix un zk-SNARK amb EzKL sobre la inferència del detector. La prova només exposa un compromís públic (un hash) del prefix de sortida atestat, tot mantenint-ne privat el contingut. Proporcionem una implementació de referència executable, n'analitzem els requisits de configuració i les restriccions de compatibilitat d'ONNX, i mostrem com aquestes proves poden donar suport a l'auditoria alineada amb el GDPR i a una governança de la IA transparent.
+Els reguladors exigeixen cada cop més evidències sobre com els sistemes d'IA tracten la informació sensible; però verificar que s'ha aplicat un filtre de sortida sol obligar a triar entre exposar la sortida privada o el filtre propietari. Presentem Zaguik, un sistema d'atestació que preserva la privadesa i empra proves de coneixement zero per alleujar aquesta tensió. El sistema respon amb un gran model de llenguatge (LLM), aplica una política de detecció d'informació d'identificació personal (PII) i produeix un zk-SNARK, amb EzKL, que acredita que un circuit de filtratge fix s'ha executat sobre la sortida codificada. Només es fan públics el resultat de la comprovació i un compromís (hash) del prefix atestat; el text i els paràmetres del filtre resten privats. Proporcionem una implementació de referència, n'informem de la mida i els temps de prova, i discutim com poden donar suport a auditories d'IA que preserven la privadesa.
 
 \vspace*{\fill}
 
 \selectlanguage{english}
 \section*{\Large \sffamily Abstract}
 Regulators increasingly require evidence-backed assurances about how AI systems
-handle sensitive information. We present Zaguik, a privacy-preserving attestation
-pipeline that proves, in zero knowledge, that a large language model (LLM)
-response passed a personally identifiable information (PII) filter, without
-revealing either the response text or the filtering model. The system generates
-an LLM response, applies a PII detection policy, and produces a
-zk-SNARK using EzKL over the detector inference. The proof exposes only a public commitment (a hash) to the attested output prefix, binding the proof to that prefix at the protocol level while keeping its contents private. We provide a runnable reference
-implementation, discuss practical setup requirements and ONNX compatibility constraints, and outline how such
-proofs can support GDPR-aligned auditing and transparent AI governance.
+handle sensitive information, yet verifying that an output filter was applied
+normally forces a choice between exposing the private output and exposing the
+proprietary filter. We present Zaguik, a privacy-preserving attestation pipeline
+that uses zero-knowledge proofs to ease this tension. The system answers a prompt
+with a large language model (LLM), applies a personally identifiable information
+(PII) detection policy, and produces a zk-SNARK, using EzKL, attesting that a
+fixed, predefined filtering circuit was executed on the encoded output. Only the
+result of that check and a hash commitment to the attested output prefix are made
+public; the output text and the filter parameters remain private. We provide a
+runnable reference implementation, report proof size and timing on commodity
+hardware, and discuss how such proofs could support privacy-preserving auditing
+of AI systems.
 
 \vspace*{\fill}
 
 \selectlanguage{spanish}
 \section*{\Large \sffamily Resumen}
-Los reguladores exigen cada vez más garantías basadas en evidencias sobre cómo los sistemas de inteligencia artificial tratan la información sensible. Presentamos Zaguik, un sistema de atestación que preserva la privacidad y demuestra, en conocimiento cero, que la respuesta de un gran modelo de lenguaje (LLM) ha superado un filtro de información de identificación personal (PII), sin revelar el texto ni el modelo de filtrado. El sistema genera la respuesta, aplica una política de detección de PII y produce un zk-SNARK con EzKL sobre la inferencia del detector. La prueba sólo expone un compromiso público (un hash) del prefijo de salida atestado, manteniendo privado su contenido. Proporcionamos una implementación de referencia ejecutable, analizamos los requisitos de configuración y las restricciones de compatibilidad de ONNX, y mostramos cómo estas pruebas pueden apoyar la auditoría alineada con el GDPR y una gobernanza de la IA transparente.
+Los reguladores exigen cada vez más evidencias sobre cómo los sistemas de IA tratan la información sensible; pero verificar que se ha aplicado un filtro de salida obliga a elegir entre exponer la salida privada o el filtro propietario. Presentamos Zaguik, un sistema de atestación que preserva la privacidad y emplea pruebas de conocimiento cero para aliviar esta tensión. El sistema responde con un gran modelo de lenguaje (LLM), aplica una política de detección de información de identificación personal (PII) y produce un zk-SNARK, con EzKL, que acredita que un circuito de filtrado fijo se ejecutó sobre la salida codificada. Solo se publican el resultado de la comprobación y un compromiso (hash) del prefijo atestado; el texto y los parámetros del filtro permanecen privados. Proporcionamos una implementación de referencia, informamos del tamaño y tiempos de prueba, y discutimos cómo pueden apoyar auditorías de IA que preservan la privacidad.
 
 \vspace*{\fill}
 
