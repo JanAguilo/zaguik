@@ -1,0 +1,112 @@
+\chapter{Evaluation}
+\label{chap:evaluation}
+
+This chapter reports the empirical evaluation of the Zaguik pipeline. We first describe the experimental setup (Section~\ref{sec:eval-setup}), then present the one-time setup costs (Section~\ref{sec:eval-setup-costs}) and the proof size and timing results across encoding lengths (Section~\ref{sec:eval-results}). The interpretation of these results is deferred to Chapter~\ref{chap:discussion}.
+
+\section{Experimental Setup}
+\label{sec:eval-setup}
+
+All experiments were conducted locally on a single machine with a Snapdragon~X 12-core X1E80100 CPU at 3.40\,GHz, 16\,GB of RAM, running Windows~11 (64-bit). The implementation uses Python~3.13.3 and EzKL~22.2.1. No GPU acceleration was used; all proof generation and verification ran entirely on CPU.
+
+\medskip
+
+The structured reference string (SRS) was generated locally using EzKL's facilities rather than retrieved from a remote trusted source. As discussed in Chapters~\ref{chap:system-design} and~\ref{chap:discussion}, this is appropriate for a self-contained research prototype but would differ in a production deployment, where the SRS would be obtained from a public trusted ceremony.
+
+\medskip
+
+Experiments were run sequentially, with no parallel execution across configurations. We evaluated five encoding lengths, $L \in \{128, 256, 512, 1024, 2048\}$ bytes, each repeated fifteen times ($n = 15$) using independently generated reference outputs from the same prompt and model. Each prompt was designed to produce an output exceeding 2048 bytes, so that for every value of $L$ the encoding window was fully populated; when $L < 2048$, only the prefix of length $L$ bytes was encoded and attested. This yields $5 \times 15 = 75$ proof-generation and verification attempts in total. The mean values and sample statistics over the fifteen runs are reported below.
+
+\section{One-Time Setup Costs}
+\label{sec:eval-setup-costs}
+
+Table~\ref{tab:setup-costs} reports the one-time setup costs for the circuit with $L = 2048$, comprising settings generation, circuit compilation, SRS generation, witness setup, and key generation. The total setup time was 102.44\,seconds. This cost is dominated by SRS generation (77.88\,s) and key generation (23.77\,s); the remaining steps each took under one second. Because setup is performed once per circuit and then amortised over all subsequent proofs, it does not contribute to the per-proof cost reported in the next section.
+
+\begin{table}[htbp]
+\centering
+\caption{One-time setup costs (byte-level PII circuit, $L = 2048$).}
+\label{tab:setup-costs}
+\vspace{2ex}
+\begin{tabular}{l r}
+\hline
+\hline
+Step & Time (s) \\
+\hline
+Settings generation & 0.14 \\
+Circuit compilation & 0.02 \\
+SRS generation$^{a}$ & 77.88 \\
+Witness (setup) & 0.63 \\
+Key generation & 23.77 \\
+\hline
+Total & 102.44 \\
+\hline
+\hline
+\multicolumn{2}{l}{\footnotesize $^{a}$Generated locally for testing; production deployments would} \\
+\multicolumn{2}{l}{\footnotesize obtain the SRS from a trusted ceremony.} \\
+\end{tabular}
+\end{table}
+
+\section{Proof Size and Timing Results}
+\label{sec:eval-results}
+
+Table~\ref{tab:results} presents the proof size, proof generation time, witness computation time, and verification time for each value of $L$, reported as mean $\pm$ sample standard deviation over the fifteen runs. All 75 proof-generation and verification attempts succeeded across the five encoding lengths.
+
+\medskip
+
+\begin{table}[htbp]
+\centering
+\caption{Proof size and timings vs.\ circuit encoding size $L$ (15 independent runs; $n=15$; reference output $\ge 2048$ bytes, prefix-truncated to the $L$-byte window). Each $L$ block shows mean, sample standard deviation ($\pm$Std), and observed range [Min, Max].}
+\label{tab:results}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\vspace{2ex}
+\begin{tabular}{c l r r r r}
+\hline
+\hline
+$L$ (bytes) & & Proof size (bytes) & Proof gen.\ (ms) & Witness (ms) & Verify (ms) \\
+\hline
+\multirow{3}{*}{128}
+  & Mean      & 21896.67 & 15240.07 &  54.31 & 195.64 \\
+  & $\pm$Std  & $\pm$27.33 & $\pm$8049.70 & $\pm$21.53 & $\pm$50.65 \\
+  & {[Min, Max]} & {[21850, 21944]} & {[10014.94, 33601.85]} & {[40.91, 128.50]} & {[150.74, 305.65]} \\
+\hline
+\multirow{3}{*}{256}
+  & Mean      & 21870.73 & 19240.44 &  89.36 & 200.85 \\
+  & $\pm$Std  & $\pm$39.03 & $\pm$9922.94 & $\pm$18.08 & $\pm$65.80 \\
+  & {[Min, Max]} & {[21822, 21966]} & {[11019.33, 32606.75]} & {[70.93, 134.03]} & {[149.94, 398.31]} \\
+\hline
+\multirow{3}{*}{512}
+  & Mean      & 21892.67 & 15944.43 & 150.55 & 168.73 \\
+  & $\pm$Std  & $\pm$33.82 & $\pm$7903.57 & $\pm$16.24 & $\pm$22.70 \\
+  & {[Min, Max]} & {[21835, 21954]} & {[10983.38, 33031.74]} & {[122.49, 183.49]} & {[140.98, 232.17]} \\
+\hline
+\multirow{3}{*}{1024}
+  & Mean      & 21893.07 & 14840.25 & 268.43 & 174.02 \\
+  & $\pm$Std  & $\pm$32.81 & $\pm$6573.20 & $\pm$20.57 & $\pm$34.71 \\
+  & {[Min, Max]} & {[21841, 21955]} & {[12137.78, 37693.64]} & {[237.38, 295.59]} & {[138.79, 260.96]} \\
+\hline
+\multirow{3}{*}{2048}
+  & Mean      & 21929.27 & 18219.90 & 540.82 & 182.45 \\
+  & $\pm$Std  & $\pm$37.22 & $\pm$9359.92 & $\pm$69.33 & $\pm$30.32 \\
+  & {[Min, Max]} & {[21867, 21991]} & {[12659.16, 43176.02]} & {[447.87, 704.70]} & {[152.73, 259.90]} \\
+\hline
+\hline
+\end{tabular}
+\end{table}
+
+We highlight four factual observations from Table~\ref{tab:results}; their interpretation is taken up in Chapter~\ref{chap:discussion}.
+
+\medskip
+
+\textbf{Proof size is essentially constant.} The mean proof size varies between 21\,871 bytes ($L = 256$) and 21\,929 bytes ($L = 2048$), a spread of less than 0.3\,\% across a sixteen-fold increase in $L$, with no monotonic trend.
+
+\medskip
+
+\textbf{Proof generation dominates and is highly variable.} Mean proof-generation time ranges from roughly 14\,840\,ms ($L = 1024$) to 19\,240\,ms ($L = 256$), with large standard deviations ($\pm$6\,573 to $\pm$9\,923\,ms). It does not vary monotonically with $L$.
+
+\medskip
+
+\textbf{Witness computation grows monotonically with $L$.} Mean witness time increases steadily from 54.31\,ms at $L = 128$ to 540.82\,ms at $L = 2048$, tracking the size of the encoding window.
+
+\medskip
+
+\textbf{Verification time is stable.} Mean verification time stays within a narrow band (roughly 169--201\,ms) across all configurations, with occasional spikes in individual runs but no systematic dependence on $L$.

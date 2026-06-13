@@ -1,0 +1,96 @@
+\chapter{Discussion}
+\label{chap:discussion}
+
+This chapter interprets the results of Chapter~\ref{chap:evaluation} (Section~\ref{sec:disc-interpretation}), examines the governance and security implications of the system (Section~\ref{sec:disc-governance}), states its limitations (Section~\ref{sec:disc-limitations}), and sketches a path towards production deployment (Section~\ref{sec:disc-production}).
+
+\section{Interpretation of Results}
+\label{sec:disc-interpretation}
+
+The experiments show that zero-knowledge attestation of an output-filtering policy can be carried out end to end using a compact circuit, and the measured costs follow a consistent pattern.
+
+\medskip
+
+The near-constant proof size, varying by under 0.3\,\% across a sixteen-fold change in $L$, confirms that proof size is determined by the structure of the circuit rather than by the amount of attested data. The small fluctuations observed are attributable to internal serialisation and metadata encoding in the proof object, not to changes in the underlying constraint system. This is the expected behaviour of a succinct argument, and it is precisely the property that makes such proofs attractive for an attestation that may be stored and checked many times. The absolute size of roughly 21.9\,KB reflects the Halo2/KZG proving system underlying EzKL, which yields larger proofs than the few-hundred-byte Groth16 proofs noted in Chapter~\ref{chap:background}; succinctness here refers to the proof's independence from the input size, not to a specific byte count.
+
+\medskip
+
+Witness computation time, by contrast, grows monotonically with $L$, from 54\,ms to 541\,ms as $L$ increases from 128 to 2048 bytes. This is the one cost that tracks the size of the encoding window directly, since the number of input values committed to the circuit grows with $L$. Even at $L = 2048$, however, witness computation remains well under a second and is a minor contributor to the total.
+
+\medskip
+
+The dominant cost is proof generation, which is also the most variable: mean times lie between roughly 15 and 19\,seconds, but with standard deviations of 6.6--9.9\,seconds and no monotonic dependence on $L$. The absence of a clean relationship with $L$, combined with the large variance, indicates that proof-generation time at this scale is governed by local execution conditions, operating-system scheduling and memory pressure on a loaded CPU, rather than by the size of the encoding window. In other words, the circuit is small enough that data size is not the bottleneck; the runtime environment is.
+
+\medskip
+
+Verification time remains broadly stable across all configurations (169--201\,ms on average), consistent with the constant-size verifier computation characteristic of KZG-based SNARKs. The contrast with proof-generation cost reveals a pronounced asymmetry: the computational burden falls almost entirely on the prover, while verification stays lightweight regardless of $L$. This asymmetry is favourable for the intended use case, in which a single prover produces an attestation that many verifiers, such as auditors, may later check cheaply.
+
+\medskip
+
+Finally, the experiments validate the prefix-attestation mechanism itself. For $L < 2048$, only the first $L$ bytes are encoded and attested, and all 75 attempts across the five values of $L$ succeeded. This confirms that the attested length can be tuned to circuit-cost constraints while preserving verifiability, at the cost of limiting the guarantee to the attested prefix rather than the entire output.
+
+\section{Governance and Security Implications}
+\label{sec:disc-governance}
+
+The pipeline illustrates a shift from trust-based enforcement to cryptographically verifiable enforcement. In conventional deployments, an external party must rely on the provider's assertion that a privacy filter is applied to LLM outputs; the alternative, inspecting the outputs or the filtering logic directly, reintroduces the very privacy and intellectual-property concerns the filter was meant to address. Zaguik enables a third party to verify instead that a specific, predefined circuit-based policy was executed on a private encoded prefix and returned \texttt{PASS}, without revealing the output itself.
+
+\medskip
+
+It is important to state precisely what this does and does not establish. The proof attests correct execution of the certified circuit on an encoded prefix and the satisfaction of the encoded constraint. It does not allow the verifier to recover or confirm the exact output: as set out in Chapter~\ref{chap:system-design}, the verifier sees only the public elements of Table~\ref{tab:visibility}, and the hash commitment links the proof to the attested prefix at the protocol level only, under an honest-prover assumption, rather than being verified inside the circuit. The mechanism therefore supports a form of privacy-preserving auditability: verification can occur without access to the generated text.
+
+\medskip
+
+We deliberately frame this contribution in measured terms. Zaguik does not, by itself, ensure regulatory compliance, and it is not a compliance product; it provides a cryptographic primitive that could be integrated into governance frameworks where evidence of enforcement is required. As noted in Chapter~\ref{chap:related-work}, this aligns with the evidentiary thrust common to data-protection and AI-specific regulation, without satisfying any particular legal obligation on its own. The architecture is also policy-agnostic at the circuit level: any deterministic filtering rule expressible as a compatible ONNX model can in principle be attested by the same mechanism, so the governance argument does not depend on the specific byte-level policy used in our prototype.
+
+\section{Limitations}
+\label{sec:disc-limitations}
+
+Several limitations must be acknowledged, most of which follow directly from the design choices and results discussed above.
+
+\medskip
+
+\textbf{Lightweight policy.} The attested circuit is intentionally simple. As explained in Chapter~\ref{chap:system-design}, the byte-level counter was adopted after a neural NER detector proved infeasible to compile and prove under the available resources. While sufficient to demonstrate feasibility, it does not reflect the sophistication of modern PII detection.
+
+\medskip
+
+\textbf{Prefix-bounded guarantee.} The circuit operates on a fixed-length byte vector, so when $L$ is smaller than the full output length only the first $L$ bytes are attested. Extending coverage to arbitrarily long outputs would require increasing $L$, segmenting outputs into multiple proofs, or employing recursive proof composition.
+
+\medskip
+
+\textbf{No formal filter--circuit equivalence.} The system proves correct execution of the byte-level circuit, not of the regex detector used operationally. The two are separate components, and while the circuit captures structural indicators of PII, no formal equivalence between the deployment-time filtering logic and its circuit representation is established.
+
+\medskip
+
+\textbf{Protocol-level hash binding.} Consistency between the public hash commitment and the encoded circuit input is enforced at the protocol level, not inside the circuit. The proof certifies correct execution of the circuit on a private input, but does not cryptographically guarantee that the published hash corresponds to the exact bytes used within the proof. Strengthening this binding by verifying the hash inside the circuit would increase circuit complexity and proof cost.
+
+\medskip
+
+\textbf{Policy semantics, not adequacy.} The system guarantees enforcement integrity of the encoded policy, not the semantic adequacy of that policy. A weak or incomplete detector can be correctly executed and faithfully proven; the attestation certifies that a rule was applied, not that the rule captures all relevant forms of personal data.
+
+\medskip
+
+\textbf{Static circuit.} Production filtering policies evolve to address new patterns and requirements, but the arithmetic circuit is static. Any change to the policy requires recompiling the circuit, regenerating the proving and verification keys, and repeating the setup phase, an operational overhead that may limit applicability where filtering logic changes frequently.
+
+\section{Towards Production Deployment}
+\label{sec:disc-production}
+
+Deploying Zaguik in a real environment would require addressing several requirements beyond the current prototype, which together outline a realistic path forward.
+
+\medskip
+
+\textbf{A more expressive policy.} The byte-level counter would need to be replaced with a policy that more faithfully reflects real PII detection, such as a lightweight neural detector or a richer regex-derived circuit, subject to the ONNX-compatibility and resource constraints identified in Chapter~\ref{chap:system-design}.
+
+\medskip
+
+\textbf{A trusted-ceremony SRS.} The structured reference string would need to be obtained from a public trusted ceremony rather than generated locally, since local generation does not provide the soundness guarantees required in an adversarial setting.
+
+\medskip
+
+\textbf{Faster proving.} The current 15--19\,seconds per proof on CPU is impractical for high-throughput settings. GPU acceleration, which can reduce proving time by one to two orders of magnitude, together with optimised native implementations, would bring this into a practical range.
+
+\medskip
+
+\textbf{Asynchronous proof generation.} Proof generation should be decoupled from the real-time request path: proofs would be produced in the background after each response is delivered, stored with their hash commitments, and made available for audit on demand, eliminating user-facing latency while preserving the audit trail.
+
+\medskip
+
+\textbf{An accessible verifier interface.} Finally, a simple verifier tool that accepts a proof and returns a valid/invalid verdict would make the system usable by auditors and regulators without cryptographic expertise. Taken together, these components define a realistic route from the present prototype to a deployable compliance primitive, particularly suited to organisations operating their own private LLM infrastructure.

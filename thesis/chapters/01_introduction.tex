@@ -1,0 +1,66 @@
+\chapter{Introduction}
+\label{chap:introduction}
+
+\section{Motivation}
+\label{sec:motivation}
+
+Artificial intelligence systems, and large language models (LLMs) in particular, are increasingly embedded in applications that handle personal data: customer-facing assistants, document summarisation tools, internal enterprise copilots, healthcare triage systems, and legal automation. Their outputs increasingly influence decisions and trigger downstream actions in automated pipelines, rather than serving as information alone. Their growing reach has also drawn increasing regulatory scrutiny. In the European Union, the General Data Protection Regulation (GDPR) governs how personal data must be processed and protected, while the more recent EU AI Act establishes a risk-based framework specifically addressing AI systems and their obligations regarding transparency, safety, and accountability. Both regimes share a common requirement: providers must be able to demonstrate, with evidence, that the safeguards they claim to apply are actually applied in practice.
+
+\medskip
+
+For LLMs deployed in regulated or customer-facing contexts, one of the most concrete obligations is the protection of personally identifiable information (PII). Outputs that leak names, identification numbers, contact details, or other sensitive attributes can violate data protection law, expose the provider to liability, and undermine user trust. A standard mitigation is to apply a PII filter to model outputs before they are delivered: a detection mechanism, often regex-based or built on top of named entity recognition (NER) models, that flags or blocks responses containing sensitive content. Operationally, such filters are widely deployed. The harder question is not whether they are deployed, but whether their application can be \emph{verified} by an external party, such as an auditor or a regulator, without compromising other interests.
+
+\medskip
+
+This is where current practice runs into a structural limitation. A verifier today has essentially two options. The first is to inspect the LLM outputs directly, alongside the filtering logic, and confirm that the filter was applied and that its result was acted upon. This route immediately conflicts with privacy: by inspecting outputs, the verifier sees the very personal data the filter was meant to protect. The second is to inspect the filtering model and its parameters, often to validate that the policy implemented in code matches the policy claimed on paper. This conflicts with intellectual property and competitive concerns, since detection models, training data, and rule sets are frequently considered confidential. In both cases, the verifier ends up trusting either the provider's word or gaining access to information that defeats the purpose of the filter or harms the provider. There is, at present, no widely adopted mechanism for proving that a PII filter was applied to a specific LLM output without revealing either the output or the filter itself.
+
+\section{Problem Statement}
+\label{sec:problem-statement}
+
+Zero-knowledge proofs (ZKPs) offer a way to close this gap. A ZKP allows one party (the prover) to convince another (the verifier) that a given statement about some data is true, without revealing the data itself. Applied to AI pipelines, a ZKP could in principle attest that a specific computation, such as the execution of a PII detector, was performed faithfully on a specific input, while keeping both the input and the detector private. Recent advances in zero-knowledge succinct non-interactive arguments of knowledge (zk-SNARKs), together with practical toolchains such as EzKL that compile machine learning models into provable arithmetic circuits, have brought this kind of attestation within reach of realistic systems.
+
+\medskip
+
+The question this thesis addresses is whether these tools can actually be assembled into an end-to-end, privacy-preserving attestation system for LLM outputs, and what the practical cost and constraints of doing so look like. Concretely, we ask: can we produce a cryptographic proof that an LLM response was passed through a certified PII filter and accepted, without disclosing the response, the model parameters, or the internals of the filter? And if so, what does the resulting system look like in terms of proof size, generation time, and verification time, on commodity hardware? Beyond feasibility, there is a regulatory dimension: which specific obligations under the GDPR or the EU AI Act could such a proof plausibly help satisfy, and where does it fall short of an end-to-end compliance solution?
+
+\section{Contributions}
+\label{sec:contributions}
+
+This thesis presents \emph{Zaguik}, a privacy-preserving attestation system that proves, in zero knowledge, that an LLM output passed a PII filter. The contributions of this work are:
+
+\begin{itemize}
+    \item \textbf{System design.} We design an end-to-end pipeline that chains LLM generation, PII filtering, zero-knowledge proof generation via EzKL, and verification. The pipeline produces a zk-SNARK proof attesting that a certified circuit was executed on the encoded model output and returned a \texttt{PASS} result, together with a public hash commitment that binds the proof to a specific output at the protocol level.
+    \item \textbf{Reference implementation.} We provide a runnable Python implementation that integrates DistilGPT-2 as the LLM, a regex-based detector as the operational PII filter, and a byte-level circuit-friendly policy compiled to ONNX as the attested computation. The implementation also documents the practical constraints of current ZKML tooling, including ONNX compatibility limits, structured reference string (SRS) handling, and version pinning of EzKL.
+    \item \textbf{Empirical evaluation.} We measure proof size, proof generation time, witness computation time, and verification time across five encoding lengths $L \in \{128, 256, 512, 1024, 2048\}$ bytes, with fifteen independent runs per configuration. The results characterise how cost scales with the attested prefix length on commodity hardware.
+    \item \textbf{Design analysis.} We discuss the design choices made during the implementation, including the decision to fall back from a neural NER-based circuit to a lightweight byte-level policy after observing that current ZKML tooling could not handle a BERT-based detector under the available compute and memory budget.
+    \item \textbf{Governance discussion.} We position the resulting attestation primitive within the European regulatory landscape, distinguishing the obligations imposed by the GDPR from those imposed by the EU AI Act, and identifying which classes of requirements an attestation mechanism of this kind could plausibly help address.
+\end{itemize}
+
+\section{Thesis Structure}
+\label{sec:thesis-structure}
+
+The remainder of this thesis is organised as follows.
+
+\medskip
+
+\textbf{Chapter~\ref{chap:background}} provides the background needed to follow the rest of the document. It introduces large language models and PII detection at a level sufficient for non-specialist readers, and then develops the cryptographic background in more depth, covering interactive and non-interactive proof systems, the properties of zero-knowledge proofs, commitment schemes, and the differences between zk-SNARKs and zk-STARKs. It also introduces EzKL, the practical toolchain used in this work.
+
+\medskip
+
+\textbf{Chapter~\ref{chap:related-work}} reviews related work across zero-knowledge proof systems, zero-knowledge machine learning, privacy-preserving machine learning, AI auditing and governance frameworks, and PII detection. It closes with an extended discussion of the regulatory context, distinguishing GDPR obligations from EU AI Act obligations and clarifying which requirements the attestation mechanism proposed here is intended to address.
+
+\medskip
+
+\textbf{Chapter~\ref{chap:system-design}} describes the design and implementation of the Zaguik pipeline. It presents the system architecture, the two-layer filtering approach, the circuit design, including the design choice to use a byte-level policy after an initial NER-based attempt proved computationally infeasible, the encoding scheme, the formal model and security assumptions, and the proof generation and verification flow.
+
+\medskip
+
+\textbf{Chapter~\ref{chap:evaluation}} reports the empirical evaluation. It details the experimental setup, presents one-time setup costs, and gives per-configuration measurements of proof size and timings across the tested encoding lengths.
+
+\medskip
+
+\textbf{Chapter~\ref{chap:discussion}} interprets the results, discusses their governance and security implications, enumerates the limitations of the current prototype, and sketches a realistic path to a production deployment.
+
+\medskip
+
+\textbf{Chapter~\ref{chap:conclusions}} concludes the thesis and outlines directions for future work, including stronger binding between commitments and circuit inputs, more expressive filtering policies within ZK constraints, recursive proof composition for longer outputs, and integration into agentic workflows.

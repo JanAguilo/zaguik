@@ -1,0 +1,37 @@
+\chapter{Conclusions}
+\label{chap:conclusions}
+
+This thesis presented Zaguik, a privacy-preserving attestation system that proves, in zero knowledge, that an encoded LLM output prefix satisfies a certified filtering policy and returns a \texttt{PASS} result, without revealing the output itself. Building on the zero-knowledge foundations developed in Chapter~\ref{chap:background} and positioned against existing work in Chapter~\ref{chap:related-work}, the system chains LLM generation, PII filtering, zk-SNARK proof generation through EzKL, and verification into a single end-to-end pipeline (Chapter~\ref{chap:system-design}), which we then evaluated empirically across a range of encoding lengths (Chapter~\ref{chap:evaluation}) and interpreted in Chapter~\ref{chap:discussion}.
+
+\medskip
+
+We state the central claim precisely. The proof attests correct execution of a fixed, certified circuit on a private encoded prefix; it does not prove correct execution of the language model, it does not establish a formal equivalence between the deployment-time regex detector and the byte-level circuit, and the hash that links the proof to a specific output operates at the protocol level under an honest-prover assumption rather than being verified inside the circuit. Within these bounds, the system demonstrates something that, to our knowledge, had not previously been shown in a runnable form: that enforcement of a circuit-encoded policy over a language-model output can be attested cryptographically while keeping the output confidential.
+
+\medskip
+
+The empirical results support the practical feasibility of this approach at a small scale. Proof size remained essentially constant and verification time broadly stable across all tested encoding lengths, confirming the succinctness expected of a zk-SNARK, while witness computation grew with the encoding window and proof generation, the dominant cost, was governed more by the runtime environment than by the size of the attested data. The prover-heavy asymmetry of these costs is well suited to an audit setting, where a single attestation is produced once and may be verified cheaply and repeatedly. At the same time, the work surfaced a concrete boundary of current ZKML tooling: a full neural detector could not be compiled and proven under the available resources, which is why the attested policy was reduced to a lightweight byte-level counter. We regard this boundary as a useful empirical finding in its own right.
+
+\medskip
+
+Taken together, these results suggest that zero-knowledge proofs can serve as a building block for verifiable enforcement mechanisms in AI systems, providing a cryptographic primitive for accountability where evidence of enforcement is required but the underlying data must remain confidential. We are careful not to overstate this: Zaguik is a research prototype and a primitive, not a compliance solution, and the path from one to the other passes through the limitations set out in Chapter~\ref{chap:discussion}.
+
+\section{Future Work}
+\label{sec:concl-future}
+
+Several directions follow naturally from this work.
+
+\medskip
+
+\textbf{More expressive policies in zero knowledge.} The most immediate goal is to attest a realistic detector rather than a byte-level proxy. This depends on advances in ZKML tooling and on hardware able to absorb the arithmetisation cost that defeated the neural detector here, and it would also narrow the gap between the operational filter and the attested circuit.
+
+\medskip
+
+\textbf{Stronger commitment binding.} The binding between the public hash and the circuit input could be moved inside the circuit, for instance by verifying a SNARK-friendly hash of the encoded input as part of the statement. This would remove the honest-prover assumption on the commitment, at the cost of additional circuit complexity.
+
+\medskip
+
+\textbf{Scaling to longer outputs.} The prefix-bounded guarantee could be extended to full outputs of arbitrary length through chunking into multiple proofs or through recursive proof composition, allowing coverage to grow without a proportional increase in per-proof cost.
+
+\medskip
+
+\textbf{Integration into governance and agentic workflows.} Finally, the attestation mechanism could be embedded within broader AI governance and compliance infrastructures, and extended to agentic workflows in which intermediate model outputs trigger external actions. In such settings, a policy check could be cryptographically enforced and attested before an action is executed, turning the primitive developed here into part of a larger accountable pipeline.

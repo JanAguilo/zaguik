@@ -1,0 +1,193 @@
+% =====================================================================
+% References for the Zaguik TFG thesis
+% Style: apalike (author-year)
+% =====================================================================
+
+% ---------- Machine learning / LLMs ----------
+
+@inproceedings{vaswani2017attention,
+  title     = {Attention is All You Need},
+  author    = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N. and Kaiser, Lukasz and Polosukhin, Illia},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  volume    = {30},
+  year      = {2017}
+}
+
+@article{sanh2019distilbert,
+  title   = {DistilBERT, a distilled version of BERT: smaller, faster, cheaper and lighter},
+  author  = {Sanh, Victor and Debut, Lysandre and Chaumond, Julien and Wolf, Thomas},
+  journal = {arXiv preprint arXiv:1910.01108},
+  year    = {2019}
+}
+
+@misc{distilgpt2,
+  title        = {{DistilGPT2} Model Card},
+  author       = {{Hugging Face}},
+  howpublished = {\url{https://huggingface.co/distilbert/distilgpt2}},
+  year         = {2019},
+  note         = {Distilled version of GPT-2; accessed 2026}
+}
+
+@inproceedings{devlin2019bert,
+  title     = {{BERT}: Pre-training of Deep Bidirectional Transformers for Language Understanding},
+  author    = {Devlin, Jacob and Chang, Ming-Wei and Lee, Kenton and Toutanova, Kristina},
+  booktitle = {Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics (NAACL)},
+  pages     = {4171--4186},
+  year      = {2019}
+}
+
+% ---------- Zero-knowledge proofs: foundations ----------
+
+@article{goldwasser1989knowledge,
+  title     = {The Knowledge Complexity of Interactive Proof Systems},
+  author    = {Goldwasser, Shafi and Micali, Silvio and Rackoff, Charles},
+  journal   = {SIAM Journal on Computing},
+  volume    = {18},
+  number    = {1},
+  pages     = {186--208},
+  year      = {1989}
+}
+
+@inproceedings{fiat1986how,
+  title     = {How to Prove Yourself: Practical Solutions to Identification and Signature Problems},
+  author    = {Fiat, Amos and Shamir, Adi},
+  booktitle = {Advances in Cryptology --- CRYPTO '86},
+  pages     = {186--194},
+  year      = {1987},
+  publisher = {Springer}
+}
+
+% ---------- zk-SNARK constructions ----------
+
+@inproceedings{groth2016size,
+  title     = {On the Size of Pairing-Based Non-interactive Arguments},
+  author    = {Groth, Jens},
+  booktitle = {Advances in Cryptology --- EUROCRYPT 2016},
+  volume    = {9666},
+  year      = {2016},
+  publisher = {Springer}
+}
+
+@misc{gabizon2019plonk,
+  title        = {{PLONK}: Permutations over Lagrange-bases for Oecumenical Noninteractive Arguments of Knowledge},
+  author       = {Gabizon, Ariel and Williamson, Zachary J. and Ciobotaru, Oana},
+  howpublished = {Cryptology ePrint Archive, Paper 2019/953},
+  year         = {2019},
+  note         = {\url{https://eprint.iacr.org/2019/953}}
+}
+
+% ---------- Zero-knowledge machine learning ----------
+
+@misc{liu2021zkcnn,
+  title        = {{zkCNN}: Zero Knowledge Proofs for Convolutional Neural Network Predictions and Accuracy},
+  author       = {Liu, Tianyi and Xie, Xiang and Zhang, Yupeng},
+  howpublished = {Cryptology ePrint Archive, Paper 2021/673},
+  year         = {2021},
+  note         = {\url{https://eprint.iacr.org/2021/673}}
+}
+
+@article{lee2024vcnn,
+  title   = {{vCNN}: Verifiable Convolutional Neural Network Based on zk-SNARKs},
+  author  = {Lee, Seunghwa and Ko, Hankyung and Kim, Jihye and Oh, Hyunok},
+  journal = {IEEE Transactions on Dependable and Secure Computing},
+  volume  = {21},
+  number  = {4},
+  pages   = {4254--4270},
+  year    = {2024}
+}
+
+@misc{ezkl,
+  title        = {{EzKL}: Zero-Knowledge Machine Learning Framework},
+  author       = {{Zkonduit}},
+  year         = {2023},
+  howpublished = {\url{https://github.com/zkonduit/ezkl}},
+  note         = {Version 22.2.1 (released 2025) used in this work; accessed 2026}
+}
+
+@inproceedings{bensasson2014vn,
+  title     = {Succinct Non-Interactive Zero Knowledge for a von Neumann Architecture},
+  author    = {Ben-Sasson, Eli and Chiesa, Alessandro and Tromer, Eran and Virza, Madars},
+  booktitle = {Proceedings of the 23rd USENIX Security Symposium (USENIX Security 14)},
+  pages     = {781--796},
+  year      = {2014}
+}
+
+@misc{halo2,
+  title        = {{Halo2}: A {PLONK}-based Zero-Knowledge Proving System},
+  author       = {{Electric Coin Company}},
+  year         = {2022},
+  howpublished = {\url{https://github.com/zcash/halo2}},
+  note         = {Accessed 2026}
+}
+
+% ---------- Privacy-preserving machine learning ----------
+
+@article{lindell2009smpc,
+  title   = {Secure Multiparty Computation for Privacy-Preserving Data Mining},
+  author  = {Lindell, Yehuda and Pinkas, Benny},
+  journal = {Journal of Privacy and Confidentiality},
+  volume  = {1},
+  number  = {1},
+  year    = {2009}
+}
+
+@inproceedings{gilad2016cryptonets,
+  title     = {{CryptoNets}: Applying Neural Networks to Encrypted Data with High Throughput and Accuracy},
+  author    = {Gilad-Bachrach, Ran and Dowlin, Nathan and Laine, Kim and Lauter, Kristin and Naehrig, Michael and Wernsing, John},
+  booktitle = {Proceedings of the 33rd International Conference on Machine Learning (ICML)},
+  pages     = {201--210},
+  year      = {2016}
+}
+
+@inproceedings{brutzkus2019lowlatency,
+  title     = {Low Latency Privacy Preserving Inference},
+  author    = {Brutzkus, Alon and Gilad-Bachrach, Ran and Elisha, Oren},
+  booktitle = {Proceedings of the 36th International Conference on Machine Learning (ICML)},
+  pages     = {812--821},
+  year      = {2019}
+}
+
+% ---------- AI auditing and governance ----------
+
+@inproceedings{mitchell2019modelcards,
+  title     = {Model Cards for Model Reporting},
+  author    = {Mitchell, Margaret and Wu, Simone and Zaldivar, Andrew and Barnes, Parker and Vasserman, Lucy and Hutchinson, Ben and Spitzer, Elena and Raji, Inioluwa Deborah and Gebru, Timnit},
+  booktitle = {Proceedings of the Conference on Fairness, Accountability, and Transparency (FAT*)},
+  pages     = {220--229},
+  year      = {2019}
+}
+
+@article{gebru2018datasheets,
+  title   = {Datasheets for Datasets},
+  author  = {Gebru, Timnit and Morgenstern, Jamie and Vecchione, Briana and Vaughan, Jennifer Wortman and Wallach, Hanna and Daum{\'e} III, Hal and Crawford, Kate},
+  journal = {Communications of the ACM},
+  volume  = {64},
+  number  = {12},
+  pages   = {86--92},
+  year    = {2021}
+}
+
+% ---------- PII detection ----------
+
+% ---------- Regulatory context ----------
+
+@article{ramos2026regulating,
+  title     = {Regulating transparency: a critique of the ``free and open source AI'' definition in the EU AI act},
+  author    = {Ramos, Simona and Pianese, Fabio},
+  journal   = {AI and Ethics},
+  volume    = {6},
+  number    = {3},
+  pages     = {317},
+  year      = {2026},
+  publisher = {Springer}
+}
+
+@article{dernoncourt2017deid,
+  title   = {De-identification of Patient Notes with Recurrent Neural Networks},
+  author  = {Dernoncourt, Franck and Lee, Ji Young and Uzuner, Ozlem and Szolovits, Peter},
+  journal = {Journal of the American Medical Informatics Association},
+  volume  = {24},
+  number  = {3},
+  pages   = {596--606},
+  year    = {2017}
+}

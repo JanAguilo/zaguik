@@ -1,0 +1,262 @@
+\documentclass[11pt, a4paper, twoside, openany]{tfg_dtic_upf}
+
+%FONT ENCODING (T1: proper accented glyphs, correct copy-paste and hyphenation of accented words)
+\usepackage[T1]{fontenc}
+
+%LANGUAGES (last listed is the main language: English)
+\usepackage[spanish,catalan,english]{babel}
+
+% Page layout: ~2.5 cm margins
+\usepackage{geometry}
+\geometry{
+  a4paper,
+  top=2.5cm,
+  bottom=2.5cm,
+  inner=2.5cm,
+  outer=2.5cm
+}
+
+% Avoid inserted blank verso pages in twoside mode
+\let\cleardoublepage\clearpage
+
+% No first-line indent on new paragraphs
+\setlength{\parindent}{0pt}
+
+%GRAPHICS AND LOGO
+\usepackage{graphicx}
+\graphicspath{{figures/}{template/}}
+
+%FONT: TIMES
+\usepackage{times}
+
+%MATHEMATICS
+\usepackage{amsmath,amssymb,amsthm}
+
+%TABLES
+\usepackage{multirow}
+
+%FANCY HEADERS AND FOOTERS
+\usepackage{fancyhdr}
+
+%NICE CHAPTER DISPLAYS
+\usepackage[avantgarde]{quotchap}
+
+%PAGE STYLE
+\pagestyle{plain}
+
+%INDEX
+\usepackage{makeidx}
+\makeindex
+
+%BIBLIOGRAPHY STYLE
+\bibliographystyle{apalike}
+
+%APPENDIX
+\usepackage{appendix}
+
+%INCLUDE EXTERNAL PDF PAGES (for cover)
+\usepackage{pdfpages}
+
+% --- HEADERS & FOOTERS CONFIGURATION ---
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.3pt}
+\renewcommand{\footrulewidth}{0.3pt}
+\fancyhead[RO,LE]{\sffamily\bfseries\leftmark}
+\fancyfoot[C]{\bfseries\thepage}
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+    \fancyfoot[C]{\bfseries\thepage}
+}
+
+% --- CUSTOM MACROS ---
+\newcommand{\C} {\ensuremath{\mathbb C}}
+\newcommand{\N} {\ensuremath{\mathbb N}}
+\newcommand{\Z} {\ensuremath{\mathbb Z}}
+\newcommand{\R} {\ensuremath{\mathbb R}}
+
+% --- THEOREM / DEFINITION ENVIRONMENTS ---
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[chapter]
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[chapter]
+
+% --- EQUATION NUMBERING ---
+\numberwithin{equation}{section}
+
+% Hyperref must be the last package loaded
+\usepackage[colorlinks=true, linkcolor=black, citecolor=black, urlcolor=blue]{hyperref}
+
+%MAIN LANGUAGE
+\selectlanguage{english}
+
+%TITLE DATA
+\title{Zaguik: Zero-Knowledge Attestation for Privacy-Preserving LLM Governance}
+\author{Jan Aguil\'o Plana}
+\thyear{Curs 2025 - 2026}
+\supervisor{Vanesa Daza}
+\grau{Mathematical Engineering in Data Science}
+
+
+\begin{document}
+
+
+%COVER PAGE (external PDF, inserted before all other content)
+\includepdf[pages=1]{cover.pdf}
+
+\frontmatter
+
+\maketitle
+
+\cleardoublepage
+
+%%%%%% Dedication (optional)
+\noindent \textit{Great things seem delusional until they happen: nothing in this world is impossible.}
+
+\cleardoublepage
+
+%%%%%% Acknowledgements (Catalan section heading per UPF template)
+\selectlanguage{catalan}
+\noindent {\Large \sffamily Agra\"{\i}ments}
+
+\medskip
+
+Com a tot i tothom a la vida, no ha existit mai cap mèrit que sigui individual, i aquest projecte no n'és una excepció. Estic orgullós de poder dir que he tingut la sort de sentir-me recolzat durant tot el procés i que aquest projecte no hauria tingut vida sense una sèrie de persones i institucions.
+
+\medskip
+
+Primer de tot, agrair a la Universitat Pompeu Fabra la possibilitat de poder treballar en un tema com aquest i donar-me els recursos disponibles. 
+
+\medskip
+
+Segon, vull agrair a la Simona Ramos perquè va ser una de les primeres en creure que podia entregar un paper en aquest àmbit quan no n'estava segur, i pel feedback donat durant el procés.
+
+\medskip
+
+Vull agrair a la meva família el fet que sempre estiguin presents, de poder comptar amb ells en qualsevol moment. Però sobretot, el que més agraeixo en aquest projecte i a la vida en general, és aquesta sensació de confiança en mi i fer-me creure que puc aconseguir més del que em penso. Gràcies mama, Mateu, avi i àvia.
+
+\medskip
+
+Segueixo per comentar que estic segur que no hagués pogut trobar millors companys amb qui compartir l'etapa de la universitat. Aniol, Pol i Pau, m'heu fet créixer dia rere dia tant a nivell professional com personal. Despertar-se i tenir ganes d'anar a la universitat no és una cosa que pensava que podia passar, però així ha sigut, cada dia. Gràcies per estar-hi durant tot el procés i haver-me despertat aquesta motivació.
+
+\medskip
+
+Finalment, vull agrair a la persona que ha fet que el projecte fos possible, que quan vaig entrar a l'octubre al seu despatx dient que volia canviar de TFG i fer-lo amb ella va acceptar sense complicacions, i em va proposar un dels temes del qual he après molt i m'ha mantingut motivat. Qui ha permès que pogués presentar un paper en una conferència per primera vegada. Gràcies, Vanesa, per haver confiat en mi des del primer moment i haver fet possible aquesta experiència.
+
+\selectlanguage{english}
+
+\cleardoublepage
+
+%%%%%% ABSTRACTS in three languages (Catalan, English, Spanish), as required by the UPF template.
+\selectlanguage{catalan}
+\section*{\Large \sffamily Resum}
+Els reguladors exigeixen cada cop més garanties basades en evidències sobre com els sistemes d'intel·ligència artificial tracten la informació sensible. Presentem Zaguik, un sistema d'atestació que preserva la privadesa i demostra, en coneixement zero, que la resposta d'un gran model de llenguatge (LLM) ha superat un filtre d'informació d'identificació personal (PII), sense revelar el text ni el model de filtratge. El sistema genera la resposta, aplica una política de detecció de PII i produeix un zk-SNARK amb EzKL sobre la inferència del detector. La prova només exposa un compromís públic (un hash) del prefix de sortida atestat, tot mantenint-ne privat el contingut. Proporcionem una implementació de referència executable, n'analitzem els requisits de configuració i les restriccions de compatibilitat d'ONNX, i mostrem com aquestes proves poden donar suport a l'auditoria alineada amb el GDPR i a una governança de la IA transparent.
+
+\vspace*{\fill}
+
+\selectlanguage{english}
+\section*{\Large \sffamily Abstract}
+Regulators increasingly require evidence-backed assurances about how AI systems
+handle sensitive information. We present Zaguik, a privacy-preserving attestation
+pipeline that proves, in zero knowledge, that a large language model (LLM)
+response passed a personally identifiable information (PII) filter, without
+revealing either the response text or the filtering model. The system generates
+an LLM response, applies a PII detection policy, and produces a
+zk-SNARK using EzKL over the detector inference. The proof exposes only a public commitment (a hash) to the attested output prefix, binding the proof to that prefix at the protocol level while keeping its contents private. We provide a runnable reference
+implementation, discuss practical setup requirements and ONNX compatibility constraints, and outline how such
+proofs can support GDPR-aligned auditing and transparent AI governance.
+
+\vspace*{\fill}
+
+\selectlanguage{spanish}
+\section*{\Large \sffamily Resumen}
+Los reguladores exigen cada vez más garantías basadas en evidencias sobre cómo los sistemas de inteligencia artificial tratan la información sensible. Presentamos Zaguik, un sistema de atestación que preserva la privacidad y demuestra, en conocimiento cero, que la respuesta de un gran modelo de lenguaje (LLM) ha superado un filtro de información de identificación personal (PII), sin revelar el texto ni el modelo de filtrado. El sistema genera la respuesta, aplica una política de detección de PII y produce un zk-SNARK con EzKL sobre la inferencia del detector. La prueba sólo expone un compromiso público (un hash) del prefijo de salida atestado, manteniendo privado su contenido. Proporcionamos una implementación de referencia ejecutable, analizamos los requisitos de configuración y las restricciones de compatibilidad de ONNX, y mostramos cómo estas pruebas pueden apoyar la auditoría alineada con el GDPR y una gobernanza de la IA transparente.
+
+\vspace*{\fill}
+
+\selectlanguage{english}
+
+\cleardoublepage
+
+%%%%%% PREFACE
+\section*{\Large \sffamily Preface}
+
+I had been thinking about my final thesis for a long time before I actually started it. My original plan was straightforward: build an application for restaurants. I found a professor with a background in business, we agreed on the project, and I was set. On paper, everything was in order.
+
+\medskip
+
+In practice, something felt wrong. I was not learning. I did not feel I was in an environment that challenged me, and I could not stand the fact that I was going to spend a year of my life on something that would not matter much beyond the grade. That is not the kind of work I wanted to produce.
+
+\medskip
+
+So I made a decision that was not easy at the time: I went to Vanesa Daza, who became my supervisor, and I asked to start over. I had three areas in mind. Artificial intelligence, because it is reshaping everything and I wanted to understand it from the inside. Quantum computing, because I knew almost nothing about it and that kind of ignorance had always attracted me. And zero-knowledge proofs, because I had encountered the idea somewhere and found it quietly fascinating, the notion that you can prove something is true without revealing why it is true blew my mind. I also had a growing interest in AI regulation, in the question of how you make a system accountable without sacrificing the privacy of the people it serves.
+
+\medskip
+
+Together with Vanesa, we found a problem that sat at the intersection of all of this: could zero-knowledge proofs be used to attest that an AI system had applied a privacy filter to its output, without revealing the output itself? Nobody had built a concrete prototype of that. We decided to try.
+
+\medskip
+
+I am grateful that I made that choice. This thesis taught me more than I expected about cryptography, about the gap between a theoretical construction and a working implementation, and about what it means to work on something genuinely open. The result is modest: a prototype, not a production system. But it is a prototype of something that did not exist before, and that is enough to make me proud of it.
+
+
+\cleardoublepage
+
+%TABLE OF CONTENTS
+\tableofcontents
+
+%AI USE DISCLAIMER (right after the index)
+\cleardoublepage
+\section*{\Large \sffamily AI Use Disclaimer}
+\addcontentsline{toc}{chapter}{AI Use Disclaimer}
+This thesis is the author's own original work, produced with the assistance of artificial intelligence (AI) tools in clearly defined roles. During writing, AI tools (Claude) were used to refine the phrasing, academic tone, and readability of selected passages and to carry out routine spelling and grammar checks; the arguments, analysis, and narrative structure remain entirely the author's own. In the technical phase, AI was used as an execution tool to generate much of the project's source code from explicit instructions: all architectural decisions, system design, logical sequencing, task prioritisation, and engineering reasoning were conceived and directed by the author, with the AI acting solely to implement the parameters and logic provided. All conceptual decisions, data interpretations, and conclusions in this research are the sole responsibility of the author.
+
+%LIST OF FIGURES
+\listoffigures
+\addcontentsline{toc}{chapter}{List of Figures}
+
+%LIST OF TABLES
+\listoftables
+\addcontentsline{toc}{chapter}{List of Tables}
+
+\mainmatter
+
+%=======================================================================
+% MAIN TEXT
+%=======================================================================
+\input{chapters/01_introduction.tex}
+\input{chapters/02_background.tex}
+\input{chapters/03_related_work.tex}
+\input{chapters/04_system_design.tex}
+\input{chapters/05_evaluation.tex}
+\input{chapters/06_discussion.tex}
+\input{chapters/07_conclusions.tex}
+
+
+\bibliography{references}
+
+\clearpage
+\appendix
+
+\chapter{The JNIC 2026 Conference Experience}
+\label{app:jnic}
+
+An earlier version of this work was submitted to the \emph{Jornadas Nacionales de Investigaci\'on en Ciberseguridad} (JNIC) 2026 and accepted for presentation at the conference, held from 6 to 8 May 2026. Presenting Zaguik there was, for me, one of the most rewarding moments of this project: it was the first time the ideas developed in this thesis were exposed to, and discussed with, a wider research community in cybersecurity. The questions, feedback, and conversations during those three days directly shaped how I framed several parts of this document, and the experience reinforced my conviction that the intersection of zero-knowledge proofs and AI governance is a direction worth pursuing.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{DSC_1604.jpg}
+    \caption{Presenting Zaguik at the JNIC 2026 conference.}
+    \label{fig:jnic-1}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.9\textwidth]{DSC_1634.jpg}
+    \caption{Picture after presenting Zaguik at the JNIC 2026 conference.}
+    \label{fig:jnic-2}
+\end{figure}
+
+
+\end{document}

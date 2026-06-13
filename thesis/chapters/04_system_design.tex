@@ -1,0 +1,155 @@
+\chapter{System Design and Implementation}
+\label{chap:system-design}
+
+This chapter describes the design and implementation of Zaguik. It begins with the overall architecture of the pipeline (Section~\ref{sec:sd-architecture}) and the two-layer approach to PII filtering (Section~\ref{sec:sd-filtering}). It then presents the central design decision of this work, the move from a neural detector to a byte-level circuit policy (Section~\ref{sec:sd-circuit}), followed by the encoding of outputs for the circuit (Section~\ref{sec:sd-encoding}). Section~\ref{sec:sd-formal} gives the formal model and security guarantees, building on the zero-knowledge background of Chapter~\ref{chap:background}. Sections~\ref{sec:sd-pipeline} and~\ref{sec:sd-implementation} describe the proof-generation pipeline and the implementation details, respectively.
+
+\section{System Architecture}
+\label{sec:sd-architecture}
+
+The core contribution of this work is a \emph{cryptographic attestation pipeline}: a way to produce a zk-SNARK proof that an encoded output prefix satisfies a certified policy, accompanied, at the protocol level, by a hash commitment to that prefix, and with no disclosure of the text or the checker's internals. As made precise in Section~\ref{sec:sd-formal}, the proof concerns the encoded prefix only, and the commitment is a separate, protocol-level object whose correspondence to the prefix is not verified inside the circuit. The PII filter is the policy being attested; its design is deliberately simple so that the focus remains on the proof system.
+
+\medskip
+
+The pipeline operates in two phases, a \emph{filtering phase} and a \emph{proof phase}, illustrated in Figure~\ref{fig:system_overview}. In the filtering phase, a user prompt is answered by an LLM (DistilGPT-2 in our implementation), and the response is checked by a PII detector. Only if the detector reports that the text contains no PII does the pipeline enter the proof phase. There, the clean output is encoded as input to a circuit that models the filtering logic, a zk-SNARK proof is generated over that circuit using EzKL, and the proof is published together with a public commitment (a hash) to the attested output prefix. A verifier receiving the proof and the commitment can check that the certified circuit was correctly executed on the encoded prefix and returned a \texttt{PASS} result, without learning the text or the filter parameters.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{system_overview.png}
+    \caption{Zaguik's end-to-end workflow: from user prompt and LLM response through PII filtering to proof generation and verification.}
+    \label{fig:system_overview}
+\end{figure}
+
+A deliberate boundary of the design is that the LLM itself is outside the scope of the proof. We do not attest that the model behaved in any particular way; we attest only that a given string was passed through the certified PII filter and accepted. This keeps the attested computation small and well defined, which, as Section~\ref{sec:sd-circuit} explains, is essential given the cost of expressing computations as arithmetic circuits.
+
+\section{PII Filtering: A Two-Layer Approach}
+\label{sec:sd-filtering}
+
+The filtering logic in Zaguik is split into two distinct components, serving two different purposes.
+
+\medskip
+
+\textbf{An operational detector.} In plain execution, the system applies a regex-based PII filter that searches for structured patterns such as email addresses, phone numbers, and identification numbers. Its role is operational: it acts as a gating mechanism that prevents obviously unsafe outputs from ever reaching the proof phase. This detector runs in the clear and is never itself the object of the proof.
+
+\medskip
+
+\textbf{A circuit-friendly policy.} For the zero-knowledge attestation, the system uses a separate, deliberately simple policy that can be efficiently expressed as an arithmetic circuit. It is implemented as a small module that operates at the byte level: it takes a fixed-length normalised byte vector as input and counts the occurrences of a fixed set of ``suspicious'' byte values that are characteristic of common PII. Concretely, the set comprises the \texttt{@} character (byte~64), associated with email addresses, together with the digits \texttt{0}--\texttt{9} (bytes~48--57), the hyphen (byte~45), and the period (byte~46), which are characteristic of phone numbers, identification numbers, and similar structured data. The module sums, over all positions, the number of input bytes equal to any of these values and outputs the resulting count; the policy is considered satisfied, \texttt{PASS}, if and only if this count is zero.
+
+\medskip
+
+It is important to be precise about what this separation implies. The zk-SNARK proof certifies correct execution of the byte-level circuit and the fact that its output is zero; it does \emph{not} certify execution of the regex detector. The correspondence between the two is a design choice, not a formally verified equivalence: the byte-level policy can be read as a conservative structural proxy for certain classes of PII indicators, but it does not capture the full semantics of the regex detector. Establishing a formal equivalence between a high-level filtering rule and its circuit representation is an open problem and outside the scope of this prototype. The attestation mechanism is also \emph{policy-agnostic}: any deterministic rule expressible as an ONNX model compatible with the proving backend can be certified in the same way. The byte-level policy is simply the instantiation that current tooling made feasible, for reasons we turn to next.
+
+\section{Circuit Design: From a Neural Detector to a Byte-Level Policy}
+\label{sec:sd-circuit}
+
+The choice of byte-level policy was not the starting point of this work but its outcome. The initial design aimed to attest a realistic PII detector: a BERT-based named-entity-recognition model of the kind described in Chapter~\ref{chap:background}, exported to ONNX and compiled into a circuit with EzKL. This would have allowed the proof to attest the execution of a genuine, model-based detector rather than a structural proxy.
+
+\medskip
+
+In practice, this approach proved infeasible under the conditions available for this project. The obstacle was \emph{resource exhaustion}: the size of a Transformer-based detector caused the EzKL \texttt{compile} and \texttt{setup} stages to exhaust the available memory on the experimental machine (16~GB of RAM, CPU only; see Chapter~\ref{chap:evaluation}). The arithmetisation cost discussed in Section~\ref{subsec:bg-circuits} is precisely what manifested here: the number of constraints needed to represent a full neural detector exceeded what the toolchain could handle in this environment.
+
+\medskip
+
+After several unsuccessful attempts, the design was therefore reduced to the byte-level counter, which is small enough to compile and prove reliably while still demonstrating the end-to-end attestation mechanism. We regard this not as a defeat but as an informative result in its own right: it delineates the current practical boundary of ZKML tooling for this class of application, and it motivates several of the directions discussed in Chapter~\ref{chap:discussion}. The pipeline itself is unchanged by the choice of policy; substituting a more expressive circuit, once tooling and hardware permit, requires no change to the surrounding architecture.
+
+\section{Encoding and Circuit Input}
+\label{sec:sd-encoding}
+
+The LLM output is a string, but the circuit operates on a fixed-size numeric tensor, so the output must be encoded. We fix an upper bound $L$ on the number of UTF-8 bytes; in our implementation $L = 2048$. When the generated output fits within $L$ bytes it is encoded and attested in full (zero-padded to $L$); when it is longer, only its first $L$ bytes (the prefix $y_L$) are encoded and attested. In the evaluation of Chapter~\ref{chap:evaluation} we deliberately generate outputs longer than $L$ in order to exercise this prefix-truncation path.
+
+\medskip
+
+The encoding proceeds as follows. The string is represented in UTF-8, zero-padded to length $L$ if shorter, and each byte is normalised to the interval $[0,1]$ by dividing by $255$. The resulting vector has shape $[1, L]$ and is used as the single input tensor to the ONNX circuit. We write $\mathrm{Enc}_L(\cdot)$ for this encoding.
+
+\medskip
+
+Separately from the circuit input, a SHA-256 hash of the prefix $y_L$ (its raw first-$L$ bytes, prior to encoding) is computed and published. This hash acts as a protocol-level commitment that associates the proof with the attested prefix; it is not fed into the circuit, and the equality between the published hash and the prefix is not verified within the proof. The precise role of this commitment, and its security implications, are made explicit in the next section.
+
+\section{Formal Model and Security}
+\label{sec:sd-formal}
+
+We now state precisely what the proof guarantees, drawing on the zero-knowledge notions of Chapter~\ref{chap:background}. The relevant notation is as follows. Let $y \in \{0,1\}^{*}$ be the full output string generated by the LLM, let $L$ be the fixed encoding length in bytes, and let $y_L$ be the prefix of $y$ consisting of its first $L$ UTF-8 bytes (or all of $y$ if $|y| \le L$). Let $x = \mathrm{Enc}_L(y_L)$ be the encoded prefix, let $H(\cdot)$ be a cryptographic hash function (SHA-256), and let $C$ be the certified arithmetic circuit implementing the byte-level policy.
+
+\medskip
+
+\textbf{Public instance and private witness.} Following the structure of an NP relation from Chapter~\ref{chap:background}, the proof separates public from private data:
+\begin{itemize}
+    \item The \emph{public instance} consists of the circuit output $o$, a non-negative integer equal to the number of suspicious bytes counted, with \texttt{PASS} signalled by $o = 0$ and \texttt{FAIL} by $o > 0$.
+    \item The \emph{private witness} consists of the encoded prefix $x$ and the internal intermediate values required to execute $C$.
+\end{itemize}
+The verification key and the structured reference string are public system parameters available to the verifier, but they are not part of the public instance of any specific proof. Table~\ref{tab:visibility} consolidates the visibility of every element in the protocol, summarising what remains private to the prover and what the verifier is able to see.
+
+\begin{table}[htbp]
+\centering
+\caption{Visibility of each element in the Zaguik protocol. The verifier sees only the public column; the model output and its encoding never leave the prover.}
+\label{tab:visibility}
+\footnotesize
+\begin{tabular}{l l p{6.2cm}}
+\hline
+\hline
+Element & Visibility & Description \\
+\hline
+Output text $y$, prefix $y_L$ & Private & The generated text; known only to the prover, never revealed. \\
+Encoded prefix $x = \mathrm{Enc}_L(y_L)$ & Private (witness) & The circuit's input tensor; part of the witness. \\
+Internal circuit values & Private (witness) & Intermediate values needed to execute $C$. \\
+Circuit output $o$ (suspicious-byte count) & Public (instance) & Revealed; $o = 0$ confirms \texttt{PASS}. \\
+Hash commitment $h = H(y_L)$ & Public & Protocol-level; \emph{not} verified inside the circuit. \\
+Proof $\pi$ & Public & Checked by the verifier. \\
+Verification key, SRS & Public & System parameters available to all parties. \\
+\hline
+\hline
+\end{tabular}
+\end{table}
+
+\medskip
+
+\textbf{Circuit statement.} The zk-SNARK proves the NP statement
+\[
+    \exists\, x \;\text{ such that }\; C(x) = 0,
+\]
+that is, the prover demonstrates knowledge of an encoded input $x$ on which the certified circuit counts zero suspicious bytes and therefore evaluates to \texttt{PASS}. The circuit operates only on the encoded prefix $x$ and never receives the full string $y$.
+
+\medskip
+
+\textbf{Protocol-level commitment.} Separately from the circuit, the prover computes and publishes the commitment
+\[
+    h = H(y_L),
+\]
+which binds the attestation to the prefix $y_L$ at the protocol level. Note that the equality $H(y_L) = h$ is \emph{not} verified inside the circuit. The binding between the public hash $h$ and the private witness $x$ relies on the prover having computed both from the same $y_L$ before proof generation. The SNARK guarantees correct execution of $C(x)$; the hash operates as a separate commitment alongside it.
+
+\medskip
+
+\textbf{Security model.} We assume a standard adversarial model in which the prover may be malicious and the verifier is honest and follows the verification algorithm. Under the soundness of zk-SNARKs (Definition~\ref{def:completeness-soundness}), no probabilistic polynomial-time adversary can produce a valid proof for $C(x) = 0$ without knowledge of a witness $x$ satisfying that relation. Zero-knowledge (Definition~\ref{def:czk}) ensures that the proof reveals no information about $x$ beyond the truth of the statement. However, because the hash commitment is enforced only at the protocol level and not inside the circuit, the binding between $h$ and $x$ holds only under an \emph{honest-prover assumption}: a malicious prover could in principle generate a valid proof for some $x$ while publishing an unrelated $h$. Strengthening this binding would require verifying the hash inside the circuit, ideally with a SNARK-friendly hash function, at the cost of additional circuit complexity.
+
+\medskip
+
+\textbf{Scope of the guarantee.} The proof guarantees correct execution of the certified circuit $C$ on an encoded prefix $x$. If $|y| \le L$ the entire output is attested; otherwise only the first $L$ bytes are attested. The system does not prove the semantic adequacy of the filtering policy, nor does it make any claim about the internal behaviour of the LLM. The guarantee is limited to enforcement integrity of the circuit-level constraint over the attested prefix.
+
+\section{Proof Generation Pipeline}
+\label{sec:sd-pipeline}
+
+The cryptographic pipeline follows the three stages of a zk-SNARK introduced in Chapter~\ref{chap:background}: setup, prove, and verify.
+
+\medskip
+
+\textbf{Setup.} Setup is performed once per circuit. The ONNX model is used to generate the proof-system settings and to compile the arithmetic circuit. A KZG structured reference string (SRS) is required; it can be obtained from a trusted source or, as in our prototype, generated locally for testing. With the compiled circuit and the SRS, key generation produces a proving key and a verification key.
+
+\medskip
+
+\textbf{Prove.} For each clean output to be attested, the system encodes it as circuit input, computes the witness, and runs the prover to produce the proof. The proof, the verification key, and (in deployment) the public commitment to the output are what the verifier subsequently needs.
+
+\medskip
+
+\textbf{Verify.} Verification is deterministic: given the proof, the verification key, the settings, and the SRS, the verifier runs the verification algorithm and accepts if and only if the proof is valid. No secret data is required. The verifier does not learn the output and cannot confirm its exact contents; at most, if it holds the published SHA-256 hash, it can associate the proof with the attested prefix under the honest-prover assumption discussed above, a correspondence that is not enforced inside the circuit.
+
+\medskip
+
+The \emph{visibility semantics} of the protocol follow the split summarised earlier in Table~\ref{tab:visibility}: the encoded input is kept private as witness data, the circuit output is exposed so that the verifier can confirm a \texttt{PASS}, and the filter parameters are fixed in the circuit rather than revealed, so the verifier learns only that the same certified circuit was executed. Together these choices ensure that the proof establishes execution of the certified circuit on a private encoded prefix returning \texttt{PASS}, while only a hash commitment to that prefix is exposed.
+
+\section{Implementation Details}
+\label{sec:sd-implementation}
+
+The reference implementation is written in Python and structured as a single scriptable workflow covering ONNX export, encoding, setup, proof generation, and verification. The default configuration builds the small byte-level ONNX model, runs setup, and then generates and verifies proofs for a given text string.
+
+\medskip
+
+The cryptographic backend is EzKL, pinned to version~22.2.1; this pin is deliberate, as other versions exhibited incompatibilities in our environment. The structured reference string is generated locally using EzKL's facilities rather than retrieved from a public ceremony. This is appropriate for a self-contained research prototype but would differ in a production deployment, where the SRS would be obtained from a trusted ceremony, as discussed in Chapter~\ref{chap:discussion}. All stages are documented so that the pipeline can be reproduced and extended; integrating a more expressive PII model would require only an ONNX export compatible with the proving backend, with no change to the surrounding pipeline.

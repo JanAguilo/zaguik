@@ -1,0 +1,67 @@
+\chapter{Related Work}
+\label{chap:related-work}
+
+This chapter situates Zaguik within five strands of existing research: zero-knowledge proof systems, zero-knowledge machine learning, privacy-preserving machine learning, AI auditing and governance, and PII detection. It then discusses the regulatory backdrop, distinguishing the General Data Protection Regulation from the EU AI Act, and closes with a positioning statement that makes the gap this work addresses explicit.
+
+\section{Zero-Knowledge Proof Systems}
+\label{sec:rw-zkp-systems}
+
+Zero-knowledge proof systems such as Groth16~\cite{groth2016size}, PLONK~\cite{gabizon2019plonk}, and related zk-SNARK constructions provide succinct and efficiently verifiable proofs of correct computation over arithmetic circuits, allowing a prover to convince a verifier that a computation was executed correctly without revealing private inputs. Building on these constructions, practical toolchains such as libsnark~\cite{bensasson2014vn}, Halo2~\cite{halo2}, and EzKL~\cite{ezkl} have made it possible to compile higher-level programs and machine-learning models into circuits suitable for zk-SNARK proving.
+
+\medskip
+
+These works focus on the cryptographic machinery for proving circuit execution correctness. They do not address the governance question of how such proofs can be used to attest enforcement of a content-filtering policy over LLM outputs without revealing those outputs.
+
+\section{Zero-Knowledge Machine Learning}
+\label{sec:rw-zkml}
+
+Zero-knowledge machine learning (ZKML) focuses on proving the correct execution of machine-learning inference without revealing private inputs. zkCNN~\cite{liu2021zkcnn} demonstrates how convolutional neural network predictions and accuracy can be verified in zero knowledge by expressing inference as arithmetic circuits, and vCNN~\cite{lee2024vcnn} presents a framework for generating zk-SNARK proofs that certify correct execution of convolutional neural network inference.
+
+\medskip
+
+These works address \emph{inference correctness}: proving that a model's output was computed faithfully according to fixed parameters. To our knowledge, prior ZKML research does not address governance-level attestation of output filtering for generative models, where the goal is not to prove the model computation but to prove that a compliance constraint was applied to the generated output.
+
+\section{Privacy-Preserving Machine Learning}
+\label{sec:rw-ppml}
+
+\begin{sloppypar}
+Research in privacy-preserving machine learning includes secure multiparty computation~\cite{lindell2009smpc}, homomorphic encryption for neural network inference~\cite{gilad2016cryptonets,brutzkus2019lowlatency}, and confidential computing enclaves. These approaches focus on protecting either model parameters or user inputs \emph{during} inference: homomorphic encryption allows inference over encrypted data without revealing the input, while secure multiparty computation distributes trust across several parties so that no single party sees the data in the clear. Their shared objective is the confidentiality of the inputs or the model, rather than verifiable enforcement of a constraint over the \emph{output} of a computation.
+\end{sloppypar}
+
+\section{AI Auditing, Transparency, and Governance}
+\label{sec:rw-governance}
+
+\begin{sloppypar}
+AI governance frameworks emphasise auditing, transparency, and accountability. Model cards~\cite{mitchell2019modelcards} and datasheets for datasets~\cite{gebru2018datasheets} propose documentation-based accountability, recording the intended use, performance, and provenance of models and datasets. In practice, auditing of deployed systems typically requires access to logs, outputs, or internal documentation, and therefore rests on institutional trust rather than on cryptographic guarantees of enforcement at runtime.
+\end{sloppypar}
+
+\medskip
+
+Recent discussions in AI safety have proposed verifiable AI or cryptographic attestation mechanisms, but concrete implementations for generative output filtering remain limited.
+
+\section{PII Detection and Content Moderation}
+\label{sec:rw-pii}
+
+Personal data detection is commonly performed using rule-based systems, named entity recognition models, or hybrid approaches~\cite{dernoncourt2017deid}, and production content-moderation systems combine deterministic filters, machine-learning classifiers, and policy-enforcement pipelines. These systems provide \emph{enforcement} but not \emph{verifiability}: an external auditor must either trust the operator or inspect outputs directly. To our knowledge, prior work on PII filtering does not provide a mechanism for cryptographically proving that filtering was applied to a given output without revealing the output itself.
+
+\section{Regulatory Context: GDPR and the EU AI Act}
+\label{sec:rw-regulatory}
+
+Because the motivation for this work is ultimately regulatory, it is worth distinguishing the two European frameworks most often invoked in discussions of AI and personal data, as they are sometimes conflated despite having different scopes and objectives.
+
+\medskip
+
+\textbf{The General Data Protection Regulation (GDPR)} is a data-protection regime. It governs how \emph{personal data} is processed, regardless of whether artificial intelligence is involved, and is built around principles such as lawful and transparent processing, data minimisation, and accountability, the last of which requires data controllers to be able to \emph{demonstrate} that they comply with these principles. Its central concern, for the purposes of this thesis, is that personal data, including PII appearing in LLM outputs, must be handled in a controlled and demonstrable manner.
+
+\medskip
+
+\textbf{The EU AI Act}, by contrast, is a product-safety-style regulation specific to artificial intelligence. It adopts a risk-based approach, classifying AI systems by the level of risk they pose and imposing correspondingly stronger obligations, such as transparency, human oversight, and record-keeping, on higher-risk systems. Its concern is not personal data as such, but the safe and accountable operation of AI systems across their lifecycle. The precise contours of these transparency obligations remain contested: recent work has argued, for instance, that the Act's treatment of openness can permit partial disclosures that erode genuine transparency and leave gaps in accountability~\cite{ramos2026regulating}.
+
+\medskip
+
+The two frameworks therefore approach the same deployment from different angles: the GDPR asks whether personal data is being processed lawfully and demonstrably, while the EU AI Act asks whether the AI system is operating within its risk-appropriate obligations. What they share, and what is relevant here, is a recurring demand for \emph{evidence}: providers are increasingly expected not merely to assert that safeguards are in place, but to be able to show it. Zaguik does not claim to satisfy any specific legal obligation, and it certainly does not constitute a complete compliance solution. Rather, it offers a cryptographic primitive aligned with the evidentiary thrust common to both regimes: the ability to produce verifiable evidence that a defined safeguard, here a PII filter, was actually applied to a given output, without that evidence itself exposing the personal data it concerns.
+
+\section{Positioning}
+\label{sec:rw-positioning}
+
+To our knowledge, no prior work combines zero-knowledge proofs with LLM output filtering to provide privacy-preserving attestation of policy enforcement. Existing zk-SNARK and ZKML systems enable proving correct circuit execution, but do not address governance-level questions of output compliance. Conversely, AI auditing and content-moderation systems enforce policies but lack cryptographic verifiability. Zaguik occupies the intersection of these domains: it is a practical prototype that attests enforcement of an output constraint over LLM-generated text while preserving the confidentiality of that text. The design and implementation of this prototype are the subject of the next chapter.
